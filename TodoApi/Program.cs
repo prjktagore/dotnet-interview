@@ -11,7 +11,6 @@ builder.Services.AddScoped<ITodoService, TodoService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<ITodoRepository, TodoRepository>();
-builder.Services.AddScoped<ITodoService, TodoService>();
 
 var app = builder.Build();
 
