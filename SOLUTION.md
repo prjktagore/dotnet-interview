@@ -1,7 +1,7 @@
 # Solution Documentation
 
-**Candidate Name:** [Your Name]  
-**Completion Date:** [Date]
+**Candidate Name:** Prajakta Gore
+**Completion Date:** 05/02/2026
 
 ---
 
