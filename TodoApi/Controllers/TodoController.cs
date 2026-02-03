@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using TodoApi.Models;
 using TodoApi.Services;
@@ -12,7 +11,6 @@ namespace TodoApi.Controllers
     {
         private readonly ITodoService _service;
 
-        // Dependency Injection (like Laravel constructor injection)
         public TodoController(ITodoService service)
         {
             _service = service;
