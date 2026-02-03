@@ -15,3 +15,10 @@ x86/
 
 # NuGet Packages
 *.nupkg
+# .NET build folders
+bin/
+obj/
+
+# SQLite database
+*.db
+

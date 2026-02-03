@@ -1,3 +1,5 @@
+﻿using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using TodoApi.Models;
 using TodoApi.Services;
@@ -5,118 +7,136 @@ using TodoApi.Services;
 namespace TodoApi.Controllers
 {
     [ApiController]
-    [Route("api")]
+    [Route("api/todos")]
     public class TodoController : ControllerBase
     {
-        public TodoController()
+        private readonly ITodoService _service;
+
+        // Dependency Injection (like Laravel constructor injection)
+        public TodoController(ITodoService service)
         {
+            _service = service;
         }
 
-        [HttpPost("createTodo")]
-        public IActionResult CreateTodo([FromBody] Todo todo)
+        // ===============================
+        // CREATE
+        // POST: api/todos
+        // ===============================
+        [HttpPost]
+        public IActionResult Create([FromBody] Todo todo)
         {
-            try
-            {
-                var todoService = new TodoService();
-                var result = todoService.CreateTodo(todo);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            if (!ModelState.IsValid)
+                return BadRequest(new
+                {
+                    message = "Validation failed",
+                    errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                });
+
+            var created = _service.CreateTodo(todo);
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = created.Id },
+                new
+                {
+                    message = "Todo created successfully",
+                    data = created
+                });
         }
 
-        [HttpPost("getTodo")]
-        public IActionResult GetTodo([FromBody] GetTodoRequest request)
+        // ===============================
+        // GET ALL
+        // GET: api/todos
+        // ===============================
+        [HttpGet]
+        public IActionResult GetAll()
         {
-            try
-            {
-                var todoService = new TodoService();
-                if (request.Id.HasValue)
-                {
-                    var todo = todoService.GetTodoById(request.Id.Value);
-                    if (todo == null)
-                    {
-                        return NotFound();
-                    }
-                    return Ok(todo);
-                }
-                else
-                {
-                    var todos = todoService.GetAllTodos();
-                    return Ok(todos);
-                }
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var todos = _service.GetAllTodos();
+            return Ok(todos);
         }
 
-        [HttpPost("updateTodo")]
-        public IActionResult UpdateTodo([FromBody] UpdateTodoRequest request)
+        // ===============================
+        // GET BY ID
+        // GET: api/todos/5
+        // ===============================
+        [HttpGet("{id}")]
+        public IActionResult GetById(int id)
         {
-            try
-            {
-                var todoService = new TodoService();
-                var existingTodo = todoService.GetTodoById(request.Id);
-                if (existingTodo == null)
-                {
-                    return NotFound();
-                }
+            var todo = _service.GetTodoById(id);
 
-                var todo = new Todo
-                {
-                    Title = request.Title,
-                    Description = request.Description,
-                    IsCompleted = request.IsCompleted
-                };
-
-                var result = todoService.UpdateTodo(request.Id, todo);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPost("deleteTodo")]
-        public IActionResult DeleteTodo([FromBody] DeleteTodoRequest request)
-        {
-            try
-            {
-                var todoService = new TodoService();
-                var result = todoService.DeleteTodo(request.Id);
-                if (result)
-                {
-                    return Ok(new { message = "Todo deleted successfully" });
-                }
+            if (todo == null)
                 return NotFound();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+
+            return Ok(todo);
         }
-    }
 
-    public class GetTodoRequest
-    {
-        public int? Id { get; set; }
-    }
+        // ===============================
+        // UPDATE
+        // Patch: api/todos/5
+        // ===============================
+        [HttpPatch("{id}")]
+        public IActionResult Update(int id, [FromBody] Todo todo)
+        {
+            var existing = _service.GetTodoById(id);
 
-    public class UpdateTodoRequest
-    {
-        public int Id { get; set; }
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public bool IsCompleted { get; set; }
-    }
+            if (existing == null)
+                return NotFound(new { message = "Todo not found" });
 
-    public class DeleteTodoRequest
-    {
-        public int Id { get; set; }
+            // merge
+            if (!string.IsNullOrWhiteSpace(todo.Title))
+                existing.Title = todo.Title;
+
+            if (!string.IsNullOrWhiteSpace(todo.Description))
+                existing.Description = todo.Description;
+
+            existing.IsCompleted = todo.IsCompleted;
+
+            // ✅ use MODEL VALIDATION here
+            var context = new ValidationContext(existing);
+            var results = new List<ValidationResult>();
+
+            if (!Validator.TryValidateObject(existing, context, results, true))
+            {
+                return BadRequest(new
+                {
+                    message = "Validation failed",
+                    errors = results.Select(r => r.ErrorMessage)
+                });
+            }
+
+            var updated = _service.UpdateTodo(id, existing);
+
+            return Ok(new
+            {
+                message = "Todo updated successfully",
+                data = updated
+            });
+        }
+
+
+
+        // ===============================
+        // DELETE
+        // DELETE: api/todos/5
+        // ===============================
+        [HttpDelete("{id}")]
+        public IActionResult Delete(int id)
+        {
+            var deleted = _service.DeleteTodo(id);
+
+            if (!deleted)
+                return NotFound(new
+                {
+                    message = "Todo not found"
+                });
+
+            return Ok(new
+            {
+                message = "Todo deleted successfully"
+            });
+        }
+
     }
 }
